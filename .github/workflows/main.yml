@@ -53,5 +53,6 @@ jobs:
         - name: Build and push
           uses: docker/build-push-action@v6
           with:
+            context: fronted/
             push: true
             tags: ${{ vars.DOCKER_USER }}/eng-frontend:${{ github.run_number }} 
