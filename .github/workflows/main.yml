@@ -9,8 +9,8 @@ on:
     - backend/*
     - k8s/manifests/**/*
   pull_request:
-    branches: [main, dev]
-    - 
+    branches: [main]
+
 defaults:
   run:
     shell: bash
