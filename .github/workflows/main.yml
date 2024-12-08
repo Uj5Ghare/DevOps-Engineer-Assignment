@@ -22,6 +22,8 @@ jobs:
         refs: ${{ github.refs_name }}
     - name: Setup node
       uses: actions/setup-node@v4
+      with:
+        node_version: '14.21.3'
     - name: Install dependencies
       run: npm install
     - name: Create production build folder
