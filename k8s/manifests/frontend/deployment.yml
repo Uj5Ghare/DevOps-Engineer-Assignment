@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: react-con
-        image: uj5ghare/eng-frontend:latest
+        image: uj5ghare/eng-frontend:"1.17.1"
         ports:
         - containerPort: 3000
         imagePullPolicy: Always
