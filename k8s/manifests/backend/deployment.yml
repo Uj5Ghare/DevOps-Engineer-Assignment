@@ -1,0 +1,29 @@
+# This is a sample deployment manifest file for a simple web application.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-deployment
+  namespace: app
+  labels:
+    app: node
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 25%
+  selector:
+    matchLabels:
+      app: node
+  template:
+    metadata:
+      labels:
+        app: node
+    spec:
+      containers:
+      - name: node-con
+        image: uj5ghare/eng-backend:"1.18.1"
+        ports:
+        - containerPort: 8000
+        imagePullPolicy: Always

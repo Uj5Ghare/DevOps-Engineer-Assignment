@@ -1,0 +1,286 @@
+name: DevOps Engineer Assignment Workflow
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+    - .github/workflows/main.yml
+    - frontend/*
+    - backend/*
+    - k8s/manifests/**/*
+  pull_request:
+    branches: [main]
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  actions: write
+  contents: write
+  
+jobs:
+  Build-And-Test:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash 
+        working-directory: ./backend
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        refs: ${{ github.refs_name }}
+    - name: Setup node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '14.21.3'
+    - name: Install dependencies
+      run: npm install
+    - name: Create production build folder
+      run: npm run build --if-present
+    - name: Testing API
+      run: npm test
+
+  ################################### FRONTEND ###############################################
+  
+  Push-To-DockerHub-Frontend:
+    if: contains(github.event.head_commit.message, 'frontend')
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+        working-directory: frontend/
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Building Docker Image
+        run: docker build . -t ${{ vars.DOCKER_USER }}/eng-frontend:1.${{ github.run_number }}.${{ github.run_attempt}}
+      - name: Pushing Docker Image
+        run: docker push ${{ vars.DOCKER_USER }}/eng-frontend:1.${{ github.run_number }}.${{ github.run_attempt}}
+
+  Image-Vuln-Check-Frontend:
+    if: contains(github.event.head_commit.message, 'frontend')
+    runs-on: ubuntu-24.04
+    needs: [Push-To-DockerHub-Frontend]
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+        working-directory: frontend/
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: "docker.io/${{ vars.DOCKER_USER }}/eng-frontend:1.${{ github.run_number }}.${{ github.run_attempt}}"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          output: trivy-report-frontend.txt
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report-frontend
+          path: trivy-report-frontend.txt
+  
+  Update-ImgTag-Frontend:
+    runs-on: ubuntu-24.04
+    needs: [Image-Vuln-Check-Frontend] 
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update tag in K8s Deployment
+        run: |
+          sed -i 's|\(uj5ghare/eng-frontend:\)[^[:space:]]*|\1"1.${{ github.run_number }}.${{ github.run_attempt}}"|' k8s/manifests/frontend/deployment.yml
+      - name: Commit and push changes
+        run: |
+          git pull origin ${{ github.ref_name }}
+          git config --global user.email "${{ secrets.GH_USER_MAIL }}"
+          git config --global user.name "${{ vars.GH_USER_NAME }}"
+          git add .
+          git commit -m "refactor(k8s) updated k8s deployment image tag"
+          git push
+          
+  Deploy-On-Minikube-Frontend:
+    if: contains(github.event.head_commit.message, 'frontend')
+    runs-on: ubuntu-24.04
+    needs: [Update-ImgTag-Frontend]
+    defaults:
+      run: 
+        shell: bash
+        working-directory: k8s/manifests/frontend/
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        refs: ${{ github.refs_name }}
+    - name: Start minikube
+      uses: medyagh/setup-minikube@latest
+    - name: Try the cluster!
+      run: kubectl get pods -A       
+    - name: Deploy to minikube
+      run: |
+        kubectl apply -f namespace.yml
+        kubectl apply -f .
+    - name: Watch the changes
+      run: | 
+        sleep 20
+        kubectl get all -n app
+        sleep 10
+        kubectl get all -n app
+
+  Slack-Notification-Frontend:
+    if: contains(github.event.head_commit.message, 'frontend')
+    runs-on: ubuntu-24.04
+    needs: [Deploy-On-Minikube-Frontend]
+    steps:
+      - name: Post to a Slack channel
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_CHANNEL_ID }}
+            text: "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+        
+
+  ################################### BACKEND ###############################################
+  
+  Push-To-DockerHub-Backend:
+    if: contains(github.event.head_commit.message, 'backend')
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+        working-directory: backend/
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Building Docker Image
+        run: docker build . -t ${{ vars.DOCKER_USER }}/eng-backend:1.${{ github.run_number }}.${{ github.run_attempt}}
+      - name: Pushing Docker Image
+        run: docker push ${{ vars.DOCKER_USER }}/eng-backend:1.${{ github.run_number }}.${{ github.run_attempt}}
+
+  Image-Vuln-Check-Backend:
+    if: contains(github.event.head_commit.message, 'backend')
+    runs-on: ubuntu-24.04
+    needs: [Push-To-DockerHub-Backend]
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+        working-directory: backend/
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: "docker.io/${{ vars.DOCKER_USER }}/eng-backend:1.${{ github.run_number }}.${{ github.run_attempt}}"
+          format: "json"
+          exit-code: "1"
+          ignore-unfixed: true
+          output: trivy-report-backend.txt
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report-backend
+          path: trivy-report-backend.txt
+
+  Update-ImgTag-Backend:
+    runs-on: ubuntu-24.04
+    needs: [Image-Vuln-Check-Backend] 
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update tag in K8s Deployment
+        run: |
+          sed -i 's|\(uj5ghare/eng-backend:\)[^[:space:]]*|\1"1.${{ github.run_number }}.${{ github.run_attempt}}"|' k8s/manifests/backend/deployment.yml
+      - name: Commit and push changes
+        run: |
+          git pull origin ${{ github.ref_name }}
+          git config --global user.email "${{ secrets.GH_USER_MAIL }}"
+          git config --global user.name "${{ vars.GH_USER_NAME }}"
+          git add .
+          git commit -m "refactor(k8s) updated k8s deployment image tag"
+          git push
+
+  Deploy-On-Minikube-Backend:
+    if: contains(github.event.head_commit.message, 'backend')
+    runs-on: ubuntu-24.04
+    needs: [Update-ImgTag-Backend]
+    defaults:
+      run: 
+        shell: bash
+        working-directory: k8s/manifests/backend/
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        refs: ${{ github.refs_name }}
+    - name: Start minikube
+      uses: medyagh/setup-minikube@latest
+    - name: Try the cluster!
+      run: kubectl get pods -A       
+    - name: Deploy to minikube
+      run: |
+        kubectl apply -f namespace.yml
+        kubectl apply -f .
+    - name: Watch the changes
+      run: | 
+        sleep 10
+        kubectl get all -n app
+        sleep 10
+        kubectl get all -n app
+
+  Slack-Notification-Backend:
+    if: contains(github.event.head_commit.message, 'backend')
+    runs-on: ubuntu-24.04
+    needs: [Deploy-On-Minikube-Backend]
+    steps:
+      - name: Post to a Slack channel
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_CHANNEL_ID }}
+            text: "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+    
