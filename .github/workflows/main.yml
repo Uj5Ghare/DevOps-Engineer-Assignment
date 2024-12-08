@@ -3,14 +3,21 @@ name: DevOps Engineer Assignment Workflow
 on:
   push:
     branches: [main, dev]
+    paths:
+    - .github/workflows/main.yml
+    - frontend/*
+    - backend/*
+    - k8s/manifests/**/*
   pull_request:
-  
+    branches: [main, dev]
+    - 
 defaults:
   run:
     shell: bash
 
 jobs:
-  Build-Test-Frontend:
+  Build-And-Test:
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-22.04
     defaults:
       run:
