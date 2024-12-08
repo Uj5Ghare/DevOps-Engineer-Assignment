@@ -3,28 +3,52 @@ name: DevOps Engineer Assignment Workflow
 on:
   push:
     branches: [main, dev]
-
+  pull_request:
+  
 defaults:
   run:
     shell: bash
 
 jobs:
-  Build:
-    runs-on: ubuntu-22.04
-    defaults:
-      run:
-        shell: bash 
-        working-directory: ./frontend
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-      with:
-        refs: ${{ github.refs_name }}
-    - name: Setup node
-      uses: actions/setup-node@v4
-      with:
-        node-version: '14.21.3'
-    - name: Install dependencies
-      run: npm install
-    - name: Create production build folder
-      run: npm run build --if-present
+  # Build:
+  #   runs-on: ubuntu-22.04
+  #   defaults:
+  #     run:
+  #       shell: bash 
+  #       working-directory: ./frontend
+  #   steps:
+  #   - name: Checkout Code
+  #     uses: actions/checkout@v4
+  #     with:
+  #       refs: ${{ github.refs_name }}
+  #   - name: Setup node
+  #     uses: actions/setup-node@v4
+  #     with:
+  #       node-version: '14.21.3'
+  #   - name: Install dependencies
+  #     run: npm install
+  #   - name: Create production build folder
+  #     run: npm run build --if-present
+
+    Docker:
+      runs-on: ubuntu-24.04
+      defaults:
+        run:
+          shell: bash 
+          working-directory: ./frontend
+      steps:
+        - name: Login to Docker Hub
+          uses: docker/login-action@v3
+          with:
+            username: ${{ vars.DOCKER_USER }}
+            password: ${{ secrets.DOCKER_TOKEN }}
+        - name: Set up QEMU
+          uses: docker/setup-qemu-action@v3
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v3
+        - name: Build and push
+          uses: docker/build-push-action@v6
+          with:
+            context: ./frontend
+            push: true
+            tags: ${{ vars.DOCKER_USER }}/eng-frontend:${{ github.run_number }} 
