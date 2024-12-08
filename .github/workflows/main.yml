@@ -103,7 +103,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Update tag in K8s Deployment
         run: |
-          sed -i 's|\(uj5ghare/chatgpt-backend:\)[^[:space:]]*|\1"1.${{ github.run_number }}.${{ github.run_attempt}}"|' k8s/manifests/frontend/deployment.yml
+          sed -i 's|\(uj5ghare/eng-frontend:\)[^[:space:]]*|\1"1.${{ github.run_number }}.${{ github.run_attempt}}"|' k8s/manifests/frontend/deployment.yml
       - name: Commit and push changes
         run: |
           git pull origin ${{ github.ref_name }}
@@ -204,7 +204,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Update tag in K8s Deployment
         run: |
-          sed -i 's|\(uj5ghare/chatgpt-backend:\)[^[:space:]]*|\1"1.${{ github.run_number }}.${{ github.run_attempt}}"|' k8s/manifests/backend/deployment.yml
+          sed -i 's|\(uj5ghare/eng-backend:\)[^[:space:]]*|\1"1.${{ github.run_number }}.${{ github.run_attempt}}"|' k8s/manifests/backend/deployment.yml
       - name: Commit and push changes
         run: |
           git pull origin ${{ github.ref_name }}
