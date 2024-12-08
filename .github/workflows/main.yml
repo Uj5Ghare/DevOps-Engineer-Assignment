@@ -144,6 +144,26 @@ jobs:
         sleep 10
         kubectl get all -n app
 
+  Slack-Notification-Frontend:
+    if: contains(github.event.head_commit.message, 'frontend')
+    runs-on: ubuntu-24.04
+    needs: [Deploy-On-Minikube-Frontend]
+    steps:
+      - name: Post to a Slack channel
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_CHANNEL_ID }}
+            text: "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+        
+
   ################################### BACKEND ###############################################
   
   Push-To-DockerHub-Backend:
@@ -244,3 +264,23 @@ jobs:
         kubectl get all -n app
         sleep 10
         kubectl get all -n app
+
+  Slack-Notification-Backend:
+    if: contains(github.event.head_commit.message, 'backend')
+    runs-on: ubuntu-24.04
+    needs: [Deploy-On-Minikube-Backend]
+    steps:
+      - name: Post to a Slack channel
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_CHANNEL_ID }}
+            text: "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+    
