@@ -182,7 +182,7 @@ jobs:
         uses: aquasecurity/trivy-action@0.20.0
         with:
           image-ref: "docker.io/${{ vars.DOCKER_USER }}/eng-backend:1.${{ github.run_number }}.${{ github.run_attempt}}"
-          format: "table"
+          format: "json"
           exit-code: "1"
           ignore-unfixed: true
           output: trivy-report-backend.txt
