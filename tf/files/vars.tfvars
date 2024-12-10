@@ -1,0 +1,8 @@
+vpc-name      = "app-vpc"
+igw-name      = "app-igw"
+subnet-name   = "app-sub"
+rt-name       = "app-rt"
+sg-name       = "app-sg"
+instance-name = "application-server"
+key-name      = "Ujwal-Hy"
+ami           = "ami-03aaeb1f15623d169"
