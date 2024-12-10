@@ -28,6 +28,10 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-22.04
+    defaults:
+      run: 
+        shell: bash
+        working-directory: frontend/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,24 +58,24 @@ jobs:
           node-version: "14.21.3"
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Restore cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ./frontend/build
-          # Generate a new cache whenever packages or source files change.
-          key: ${{ runner.os }}-Reactjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
-          # If source files changed but packages didn't, rebuild from a prior cache.
-          restore-keys: |
-            ${{ runner.os }}-Reactjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-
+      # - name: Restore cache
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       ./frontend/build
+      #     # Generate a new cache whenever packages or source files change.
+      #     key: ${{ runner.os }}-Reactjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+      #     # If source files changed but packages didn't, rebuild from a prior cache.
+      #     restore-keys: |
+      #       ${{ runner.os }}-Reactjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-
       - name: Install dependencies
-        run: cd ./frontend/ && npm install
+        run: npm install
       - name: Build with React.js
-        run: cd ./frontend/ && npm run build
+        run: npm run build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./frontend/build
+          path: build
 
   # Deployment job
   deploy:
