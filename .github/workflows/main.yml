@@ -69,34 +69,6 @@ jobs:
       - name: Pushing Docker Image
         run: docker push ${{ vars.DOCKER_USER }}/eng-frontend:1.${{ github.run_number }}.${{ github.run_attempt}}
 
-  # Image-Vuln-Check-Frontend:
-  #   if: contains(github.event.head_commit.message, 'frontend')
-  #   runs-on: ubuntu-24.04
-  #   needs: [Build-And-Push-Frontend]
-  #   continue-on-error: true
-  #   defaults:
-  #     run:
-  #       shell: bash
-  #       working-directory: frontend/
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
-  #     - name: Run Trivy Vulnerability Scanner
-  #       uses: aquasecurity/trivy-action@0.20.0
-  #       with:
-  #         image-ref: "docker.io/${{ vars.DOCKER_USER }}/eng-frontend:1.${{ github.run_number }}.${{ github.run_attempt}}"
-  #         format: "table"
-  #         exit-code: "1"
-  #         ignore-unfixed: true
-  #         output: trivy-report-frontend.txt
-  #         vuln-type: "os,library"
-  #         severity: "CRITICAL,HIGH"
-  #     - name: Upload Artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: trivy-report-frontend
-  #         path: trivy-report-frontend.txt
-
   Image-Vuln-Check-Frontend:
     runs-on: ubuntu-24.04
     needs: [Build-And-Push-Frontend]
@@ -213,32 +185,24 @@ jobs:
         run: docker push ${{ vars.DOCKER_USER }}/eng-backend:1.${{ github.run_number }}.${{ github.run_attempt}}
 
   Image-Vuln-Check-Backend:
-    if: contains(github.event.head_commit.message, 'backend')
     runs-on: ubuntu-24.04
     needs: [Build-And-Push-Backend]
-    continue-on-error: true
-    defaults:
-      run:
-        shell: bash
-        working-directory: backend/
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-      - name: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@0.20.0
+      - name: Login to Docker Registry
+        uses: docker/login-action@v3
         with:
-          image-ref: "docker.io/${{ vars.DOCKER_USER }}/eng-backend:1.${{ github.run_number }}.${{ github.run_attempt}}"
-          format: "json"
-          exit-code: "1"
-          ignore-unfixed: true
-          output: trivy-report-backend.txt
-          vuln-type: "os,library"
-          severity: "CRITICAL,HIGH"
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+          username: ${{ vars.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Docker Scout
+        id: docker-scout
+        uses: docker/scout-action@v1
         with:
-          name: trivy-report-backend
-          path: trivy-report-backend.txt
+          command: cves,recommendations
+          image: docker.io/${{ vars.DOCKER_USER }}/eng-backend:1.${{ github.run_number }}.${{ github.run_attempt}}
+          ignore-unchanged: true
+          only-severities: critical,high
+          write-comment: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   Update-ImgTag-Backend:
     runs-on: ubuntu-24.04
@@ -315,10 +279,6 @@ jobs:
           fi
         done
         echo "ALERT: Backend is down!" >&2
-    - name: Expose Grafana
-      run: |
-        kubectl port-forward service/grafana 3000:80 &
-        echo "Grafana dashboard is accessible at http://localhost:3000"
 
   Slack-Notification-Backend:
     if: contains(github.event.head_commit.message, 'backend')
