@@ -45,7 +45,7 @@ jobs:
 
   ################################### FRONTEND ###############################################
   
-  Push-To-DockerHub-Frontend:
+  Build-And-Push-Frontend:
     if: contains(github.event.head_commit.message, 'frontend')
     runs-on: ubuntu-24.04
     defaults:
@@ -72,7 +72,7 @@ jobs:
   Image-Vuln-Check-Frontend:
     if: contains(github.event.head_commit.message, 'frontend')
     runs-on: ubuntu-24.04
-    needs: [Push-To-DockerHub-Frontend]
+    needs: [Build-And-Push-Frontend]
     continue-on-error: true
     defaults:
       run:
@@ -168,7 +168,7 @@ jobs:
 
   ################################### BACKEND ###############################################
   
-  Push-To-DockerHub-Backend:
+  Build-And-Push-Backend:
     if: contains(github.event.head_commit.message, 'backend')
     runs-on: ubuntu-24.04
     defaults:
@@ -195,7 +195,7 @@ jobs:
   Image-Vuln-Check-Backend:
     if: contains(github.event.head_commit.message, 'backend')
     runs-on: ubuntu-24.04
-    needs: [Push-To-DockerHub-Backend]
+    needs: [Build-And-Push-Backend]
     continue-on-error: true
     defaults:
       run:
@@ -271,13 +271,11 @@ jobs:
         kubectl apply -f .
     - name: Watch the changes
       run: | 
-        sleep 10
-        kubectl get all -n app
-        sleep 5
+        sleep 15
         kubectl get all -n app
     - name: Monitor Resource Usage
       run: |
-        sleep 10
+        sleep 30
         kubectl top pods -n app
         kubectl get all -n app
     - name: Health Check for Backend
