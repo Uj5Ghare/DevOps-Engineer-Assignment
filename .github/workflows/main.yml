@@ -117,6 +117,8 @@ jobs:
           git commit -m "refactor(k8s) updated k8s deployment image tag"
           git push
           
+#NOTE: I understand that following job does not adhere to real-world practices, but it is simply an experiment to showcase that we can use k8s to deploy our apps to github servers to simulate how it will function on our actual server/vm.
+# I could have utilized EKS cluster here, but it's a very expensive service, and my AWS credits are ov         
   Deploy-On-Minikube-Frontend:
     if: contains(github.event.head_commit.message, 'frontend')
     runs-on: ubuntu-24.04
@@ -238,6 +240,8 @@ jobs:
           git commit -m "refactor(k8s) updated k8s deployment image tag"
           git push
 
+#NOTE: I understand that following job does not adhere to real-world practices, but it is simply an experiment to showcase that we can use k8s to deploy our apps to github servers to simulate how it will function on our actual server/vm.
+# I could have utilized EKS cluster here, but it's a very expensive service, and my AWS credits are over.
   Deploy-On-Minikube-Backend:
     if: contains(github.event.head_commit.message, 'backend')
     runs-on: ubuntu-24.04
@@ -252,8 +256,16 @@ jobs:
         refs: ${{ github.refs_name }}
     - name: Start minikube
       uses: medyagh/setup-minikube@latest
-    - name: Try the cluster!
-      run: kubectl get pods -A       
+    - name: Enable Metrics Server
+      run: |
+        minikube addons enable metrics-server
+        kubectl wait --for=condition=available --timeout=300s deployment/metrics-server -n kube-system
+    - name: Install Prometheus and Grafana
+      run: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo update
+        helm install prometheus prometheus-community/prometheus --set alertmanager.enabled=true
+        helm install grafana prometheus-community/grafana
     - name: Deploy to minikube
       run: |
         kubectl apply -f namespace.yml
@@ -262,8 +274,30 @@ jobs:
       run: | 
         sleep 10
         kubectl get all -n app
-        sleep 10
+        sleep 5
         kubectl get all -n app
+    - name: Monitor Resource Usage
+      run: |
+        sleep 10
+        kubectl top pods -n app
+        kubectl get all -n app
+    - name: Health Check for Backend
+      run: |
+        set -e
+        for i in {1..5}; do
+          if curl -fsS http://localhost:8000/status; then
+            echo "Backend is healthy!"
+            exit 0
+          else
+            echo "Attempt $i: Backend is down!"
+            sleep 10
+          fi
+        done
+        echo "ALERT: Backend is down!" >&2
+    - name: Expose Grafana
+      run: |
+        kubectl port-forward service/grafana 3000:80 &
+        echo "Grafana dashboard is accessible at http://localhost:3000"
 
   Slack-Notification-Backend:
     if: contains(github.event.head_commit.message, 'backend')
