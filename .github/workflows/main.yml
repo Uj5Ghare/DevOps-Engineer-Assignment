@@ -269,12 +269,14 @@ jobs:
       run: |
         kubectl apply -f namespace.yml
         kubectl apply -f .
-        kubectl port-forward svc/node-svc 8000:80 --address 0.0.0.0 -n app &
     - name: Watch the changes
       run: |
-        kubectl get all -n kub-system
+        sleep 10
+        kubectl get all -n kube-system
         sleep 15
         kubectl get all -n app
+        sleep 5
+        kubectl port-forward svc/node-svc 8000:80 --address 0.0.0.0 -n app &
     # - name: Monitor Resource Usage
     #   run: |
     #     sleep 30
