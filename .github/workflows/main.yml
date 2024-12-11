@@ -265,7 +265,6 @@ jobs:
         helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
         helm repo update
         helm install prometheus prometheus-community/prometheus --set alertmanager.enabled=true
-        helm install grafana prometheus-community/grafana
     - name: Deploy to minikube
       run: |
         kubectl apply -f namespace.yml
