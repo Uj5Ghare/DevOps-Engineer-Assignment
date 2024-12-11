@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: node-con
-        image: uj5ghare/eng-backend:1.25.1
+        image: uj5ghare/eng-backend:1.26.1
         ports:
         - containerPort: 8000
         imagePullPolicy: Always
