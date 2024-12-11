@@ -269,20 +269,22 @@ jobs:
       run: |
         kubectl apply -f namespace.yml
         kubectl apply -f .
+        kubectl port-forward svc/node-svc 8000:80 --address 0.0.0.0 -n app &
     - name: Watch the changes
-      run: | 
+      run: |
+        kubectl get all -n kub-system
         sleep 15
         kubectl get all -n app
-    - name: Monitor Resource Usage
-      run: |
-        sleep 30
-        kubectl top pods -n app
-        kubectl get all -n app
+    # - name: Monitor Resource Usage
+    #   run: |
+    #     sleep 30
+    #     kubectl top pods -n app
+    #     kubectl get all -n app
     - name: Health Check for Backend
       run: |
         set -e
         for i in {1..5}; do
-          if curl -fsS http://localhost:8000/status; then
+          if  curl -fsS http://localhost:8000/status; then
             echo "Backend is healthy!"
             exit 0
           else
