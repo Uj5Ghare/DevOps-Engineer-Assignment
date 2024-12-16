@@ -1,4 +1,4 @@
-# DevOps-Engineer-Assignment
+# DevOps-Engineer-Project
 
 This project consists of two parts: a ReactJS frontend and a NodeJS backend.
 
@@ -10,7 +10,7 @@ This ReactJS application provides the user interface for the application.
 Clone the repository:
 
 ```
-git clone https://github.com/Uj5Ghare/DevOps-Engineer-Assignment.git
+git clone https://github.com/Uj5Ghare/DevOps-Engineer-Project.git
 ```
 
 Navigate to the frontend directory:
@@ -47,7 +47,7 @@ This NodeJS application provides the backend logic and API endpoints for the app
 #### Getting Started
 Clone the repository (if not already done):
 ```
-git clone https://github.com/Uj5Ghare/DevOps-Engineer-Assignment.git
+git clone https://github.com/Uj5Ghare/DevOps-Engineer-Project.git
 ```
 
 Navigate to the backend directory:
